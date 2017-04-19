@@ -3682,6 +3682,45 @@ sub _get_extra_linker_flags
     join(" ", @ldflags, map('-L'.$self->_sanitize_prog($_), @lib_dirs), map("-l$_", @libs));
 }
 
+=head2 begin, commit, rollback
+
+Sometimes it is usefull to explore the environment in several mutually
+exclusive ways until a suitable one is found.
+
+The C<begin> method allows to set a check point on the
+autoconfiguration process.
+
+Later, if C<rollback> is called, the object state will be restored to
+the one it had at the check point so that the autoconfiguration can
+proceed in a different way.
+
+Otherwise, if the C<commit> method is called, the check point is
+discarded.
+
+=cut
+
+sub begin {
+    my $self = shift->_get_instance;
+    require Storable;
+    my $txns = delete $self->{txns};
+    $self->{txns} = [ Storable::freeze($self), @$txns ];
+    1;
+}
+
+sub commit {
+    my $self = shift->_get_instance;
+    pop @{$self->{txns}};
+    1;
+}
+
+sub rollback {
+    my $self = shift->_get_instance;
+    my $txns = delete $self->{txns};
+    my $old = pop @$txns;
+    %$self = %{Stotable::thaw($old)};
+    1;
+}
+
 =head1 AUTHOR
 
 Alberto Simões, C<< <ambs@cpan.org> >>
